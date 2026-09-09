@@ -1,0 +1,14 @@
+.build/
+.swiftpm/
+.DS_Store
+
+# Local packages, diagnostic work, and credentials are never source artifacts.
+outputs/
+work/
+*.app/
+*.zip
+.env
+.env.*
+auth.json
+*.key
+*.pem
