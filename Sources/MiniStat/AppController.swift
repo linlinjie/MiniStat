@@ -20,6 +20,7 @@ final class AppController: NSObject, NSMenuDelegate {
     )
     private let loginErrorItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private var trafficWindowController: TrafficWindowController?
+    private let screenshotCapture = ScreenshotCapture()
     private var quotaTimer: Timer?
     private var quotaReadings: [String: QuotaReading] = [:]
     private var quotaErrors: [String: String] = [:]
@@ -128,10 +129,12 @@ final class AppController: NSObject, NSMenuDelegate {
         }
         quotaRefreshRoot.submenu = quotaRefreshMenu; menu.addItem(quotaRefreshRoot)
         menu.addItem(.separator())
-        let captureItem = NSMenuItem(title: "截图 / 录屏…", action: #selector(openScreenshot), keyEquivalent: "")
+        let captureItem = NSMenuItem(title: "截图并标注…", action: #selector(captureAndAnnotate), keyEquivalent: "")
         captureItem.target = self
         captureItem.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "截图与录屏")
         menu.addItem(captureItem)
+        let systemCapture = NSMenuItem(title: "系统截图 / 录屏…", action: #selector(openScreenshot), keyEquivalent: "")
+        systemCapture.target = self; menu.addItem(systemCapture)
 
         loginItem.target = self
         menu.addItem(loginItem)
@@ -185,7 +188,7 @@ final class AppController: NSObject, NSMenuDelegate {
     }
 
     private func updateStatusView() {
-        metricsView.quotaCells = preferences.quotaDisplay.providers.flatMap { name in
+        metricsView.quotaColumns = preferences.quotaDisplay.providers.map { name in
             QuotaReading.statusCells(provider: name, reading: quotaReadings[name], failed: quotaErrors[name] != nil)
         }
         metricsView.update(snapshot: snapshot, visibleModules: preferences.visibleModules)
@@ -203,7 +206,7 @@ final class AppController: NSObject, NSMenuDelegate {
 
     private var accessibilityLabel: String {
         let modules = MetricModule.allCases.filter(preferences.visibleModules.contains)
-        let labels = modules.map(\.menuTitle) + metricsView.quotaCells.map { "\($0.0) 剩余 \($0.1)" }
+        let labels = modules.map(\.menuTitle) + metricsView.quotaColumns.flatMap { $0 }.map { "\($0.0) 剩余 \($0.1)" }
         return labels.isEmpty ? "MiniStat 设置" : "MiniStat：" + labels.joined(separator: "、")
     }
 
@@ -322,6 +325,11 @@ final class AppController: NSObject, NSMenuDelegate {
         startQuotaTimer(); refreshMenuStates()
     }
 
+    @objc private func captureAndAnnotate() {
+        menu.cancelTracking()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in self?.screenshotCapture.begin() }
+    }
+
     @objc private func openScreenshot() {
         menu.cancelTracking()
         // Launch Apple's own selection/recording toolbar after the menu closes.
@@ -371,6 +379,11 @@ final class AppController: NSObject, NSMenuDelegate {
                 item.isEnabled = false; quotaDetails.addItem(item)
             }
             label(name + (quotaLoading.contains(name) ? " · 刷新中" : ""))
+            if name == "Cursor" {
+                for pool in CursorQuotaPool.allCases where !(quotaReadings[name]?.currentWindows().contains { $0.cursorPool == pool } ?? false) {
+                    label("\(pool.title)：剩余 --%（未获取或已过期）")
+                }
+            }
             if let reading = quotaReadings[name] {
                 for window in reading.currentWindows() {
                     label("\(window.title)：剩余 \(Int(window.remaining.rounded()))%" + (window.reset.map { " · \(formatter.string(from: $0)) 重置" } ?? ""))

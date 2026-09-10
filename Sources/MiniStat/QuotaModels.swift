@@ -21,11 +21,19 @@ enum QuotaDisplay: String, CaseIterable {
     }
 }
 
+enum CursorQuotaPool: CaseIterable {
+    case cursorModels, otherModels
+    var title: String { self == .cursorModels ? "Cursor Models" : "Other Models" }
+    var field: String { self == .cursorModels ? "autoPercentUsed" : "apiPercentUsed" }
+    var label: String { self == .cursorModels ? "CURSOR M" : "OTHER M" }
+}
+
 struct QuotaWindow {
     let title: String
     let remaining: Double
     let reset: Date?
     var durationMinutes: Int? = nil
+    var cursorPool: CursorQuotaPool? = nil
 }
 
 struct QuotaReading {
@@ -50,7 +58,9 @@ struct QuotaReading {
             return [("CODEX 5H", text(windows.first { $0.durationMinutes == 300 })),
                     ("CODEX 7D", text(windows.first { $0.durationMinutes == 10080 }))]
         }
-        return [("CURSOR", text(windows.first))]
+        return CursorQuotaPool.allCases.map { pool in
+            (pool.label, text(windows.first { $0.cursorPool == pool }))
+        }
     }
 }
 
@@ -75,7 +85,7 @@ enum QuotaParsing {
         return windows.isEmpty ? nil : QuotaReading(windows: windows, updated: Date())
     }
     static func cursor(_ json: [String: Any]) -> QuotaReading? {
-        guard let plan = json["planUsage"] as? [String: Any], let left = remaining(plan["totalPercentUsed"]) else { return nil }
+        guard let plan = json["planUsage"] as? [String: Any] else { return nil }
         let raw = json["billingCycleEnd"]
         let reset: Date?
         if let value = number(raw), value > 0 {
@@ -83,6 +93,12 @@ enum QuotaParsing {
         } else {
             reset = (raw as? String).flatMap { ISO8601DateFormatter().date(from: $0) }
         }
-        return QuotaReading(windows: [QuotaWindow(title: "本计费周期", remaining: left, reset: reset)], updated: Date())
+        // The endpoint retains legacy auto/API names for the two dashboard pools.
+        // Never substitute the aggregate percentage for a missing pool.
+        let windows = CursorQuotaPool.allCases.compactMap { pool -> QuotaWindow? in
+            guard let left = remaining(plan[pool.field]) else { return nil }
+            return QuotaWindow(title: pool.title, remaining: left, reset: reset, cursorPool: pool)
+        }
+        return windows.isEmpty ? nil : QuotaReading(windows: windows, updated: Date())
     }
 }

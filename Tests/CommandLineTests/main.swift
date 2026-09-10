@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import CoreGraphics
 
 private var failures = 0
 
@@ -165,7 +166,22 @@ let partialCells = QuotaReading.statusCells(provider: "Codex", reading: codexQuo
 check(partialCells.map { $0.1 } == ["75%", "--%"], "missing weekly window is unknown")
 check(QuotaReading.statusCells(provider: "Codex", reading: twoWindows, failed: true).map { $0.1 } == ["95%*", "80%*"], "failed codex refresh marks both cached windows")
 check(QuotaReading.statusCells(provider: "Codex", reading: staleQuota).map { $0.1 } == ["--%", "--%"], "stale split windows hidden")
-check(QuotaReading.statusCells(provider: "Cursor", reading: nil).count == 1, "cursor remains one cell")
+check(QuotaReading.statusCells(provider: "Cursor", reading: nil).map { $0.1 } == ["--%", "--%"], "cursor missing pools unknown")
+let cursorSplit = QuotaParsing.cursor(["planUsage": ["autoPercentUsed": 90.8291666667, "apiPercentUsed": 100, "totalPercentUsed": 50]])!
+check(cursorSplit.windows.map(\.title) == ["Cursor Models", "Other Models"], "cursor full pool titles")
+check(QuotaReading.statusCells(provider: "Cursor", reading: cursorSplit).map { $0.0 } == ["CURSOR M", "OTHER M"], "cursor split labels")
+check(QuotaReading.statusCells(provider: "Cursor", reading: cursorSplit).map { $0.1 } == ["9%", "0%"], "cursor independent pools ignore aggregate")
+let reversedCursor = QuotaReading(windows: cursorSplit.windows.reversed(), updated: Date())
+check(QuotaReading.statusCells(provider: "Cursor", reading: reversedCursor, failed: true).map { $0.1 } == ["9%*", "0%*"], "cursor matches pool identity and marks cache")
+let cursorPartial = QuotaParsing.cursor(["planUsage": ["autoPercentUsed": true, "apiPercentUsed": "1", "totalPercentUsed": 20] as [String: Any]])
+check(QuotaReading.statusCells(provider: "Cursor", reading: cursorPartial).map { $0.1 } == ["--%", "99%"], "cursor invalid pool not replaced by aggregate")
+check(QuotaParsing.cursor(["planUsage": ["totalPercentUsed": 20]]) == nil, "cursor aggregate only rejected")
+let cursorZero = QuotaParsing.cursor(["planUsage": ["autoPercentUsed": 0, "apiPercentUsed": "NaN"] as [String: Any]])
+check(QuotaReading.statusCells(provider: "Cursor", reading: cursorZero).map { $0.1 } == ["100%", "--%"], "cursor zero and nonfinite pools")
+let cursorExpired = QuotaParsing.cursor(["planUsage": ["autoPercentUsed": 0, "apiPercentUsed": 0], "billingCycleEnd": 1000])
+check(QuotaReading.statusCells(provider: "Cursor", reading: cursorExpired).map { $0.1 } == ["--%", "--%"], "cursor reset expires both pools")
+let cursorStale = QuotaReading(windows: cursorSplit.windows, updated: Date().addingTimeInterval(-901))
+check(QuotaReading.statusCells(provider: "Cursor", reading: cursorStale).map { $0.1 } == ["--%", "--%"], "cursor stale pools unknown")
 do {
     let result = try BoundedCommand.run(path: "/usr/bin/printf", arguments: ["fixture-only"])
     check(result.status == 0 && String(data: result.output, encoding: .utf8) == "fixture-only", "bounded command captures stdout")
@@ -184,6 +200,16 @@ do {
 } catch CommandFailure.timeout { check(Date().timeIntervalSince(timeoutStart) < 3, "bounded command terminates on timeout") }
 catch { check(false, "bounded command unexpected timeout failure") }
 defaults.removePersistentDomain(forName: suiteName)
+
+check(ScreenshotGeometry.rect(from: CGPoint(x: 30, y: 40), to: CGPoint(x: 10, y: 5)) == CGRect(x: 10, y: 5, width: 20, height: 35), "screenshot reverse drag normalized")
+let retinaCrop = ScreenshotGeometry.pixelCrop(selection: CGRect(x: 10, y: 20, width: 30, height: 40), viewSize: CGSize(width: 100, height: 100), pixels: CGSize(width: 200, height: 200))
+check(retinaCrop == CGRect(x: 20, y: 80, width: 60, height: 80), "screenshot retina top-left conversion")
+check(ScreenshotGeometry.pixelCrop(selection: CGRect(x: -10, y: -10, width: 30, height: 30), viewSize: CGSize(width: 100, height: 100), pixels: CGSize(width: 100, height: 100)) == CGRect(x: 0, y: 80, width: 20, height: 20), "screenshot selection clamps to screen")
+check(ScreenshotGeometry.pixelCrop(selection: CGRect(x: 0, y: 0, width: 1, height: 1), viewSize: CGSize(width: 100, height: 100), pixels: CGSize(width: 200, height: 200)) == nil, "screenshot tiny selection rejected")
+let fit = ScreenshotGeometry.fit(image: CGSize(width: 200, height: 100), into: CGRect(x: 10, y: 20, width: 100, height: 100))
+check(fit == CGRect(x: 10, y: 45, width: 100, height: 50), "screenshot editor preserves aspect ratio")
+check(ScreenshotGeometry.imagePoint(CGPoint(x: 60, y: 70), in: fit, pixels: CGSize(width: 200, height: 100)) == CGPoint(x: 100, y: 50), "screenshot editor pointer mapping")
+check(ScreenshotGeometry.imagePoint(.zero, in: fit, pixels: CGSize(width: 200, height: 100)) == nil, "screenshot editor ignores letterbox margins")
 
 if failures > 0 {
     print("\n\(failures) test(s) failed")

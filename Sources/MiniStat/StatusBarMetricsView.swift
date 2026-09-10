@@ -13,7 +13,8 @@ final class StatusBarMetricsView: NSView {
     }()
 
     private(set) var snapshot = MetricSnapshot.empty
-    var quotaCells: [(String, String)] = [] {
+    // One column per provider, with its two quota windows stacked vertically.
+    var quotaColumns: [[(String, String)]] = [] {
         didSet { invalidateIntrinsicContentSize(); needsDisplay = true }
     }
     private(set) var visibleModules = AppPreferences.defaults.visibleModules
@@ -36,10 +37,10 @@ final class StatusBarMetricsView: NSView {
     }
 
     var requiredWidth: CGFloat {
-        guard !visibleModules.isEmpty || !quotaCells.isEmpty else { return 26 }
+        guard !visibleModules.isEmpty || !quotaColumns.isEmpty else { return 26 }
         return MetricModule.allCases
             .filter(visibleModules.contains)
-            .reduce(CGFloat(quotaCells.count * 64)) { $0 + width(for: $1) }
+            .reduce(CGFloat(quotaColumns.count * 90)) { $0 + width(for: $1) }
     }
 
     override var intrinsicContentSize: NSSize {
@@ -48,7 +49,7 @@ final class StatusBarMetricsView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        guard !visibleModules.isEmpty || !quotaCells.isEmpty else {
+        guard !visibleModules.isEmpty || !quotaColumns.isEmpty else {
             drawFallbackIcon()
             return
         }
@@ -67,10 +68,18 @@ final class StatusBarMetricsView: NSView {
             }
             x += moduleWidth
         }
-        for (name, value) in quotaCells {
-            drawCentered(value, in: NSRect(x: x + 3, y: floor(bounds.midY) - 0.5, width: 58, height: bounds.height / 2 + 1), font: Self.valueFont)
-            drawCentered(name.uppercased(), in: NSRect(x: x + 3, y: 0.5, width: 58, height: floor(bounds.midY)), font: Self.labelFont)
-            x += 64
+        for column in quotaColumns {
+            if x > 0 {
+                textColor.withAlphaComponent(0.25).setFill()
+                NSRect(x: x - 0.5, y: 4, width: 1, height: max(8, bounds.height - 8)).fill()
+            }
+            for (index, cell) in column.prefix(2).enumerated() {
+                let midY = floor(bounds.midY)
+                let rect = NSRect(x: x + 2, y: index == 0 ? midY - 0.5 : 0.5,
+                                  width: 86, height: index == 0 ? bounds.height - midY + 0.5 : midY)
+                drawCentered("\(cell.0) \(cell.1)", in: rect, font: Self.networkValueFont)
+            }
+            x += 90
         }
     }
 
