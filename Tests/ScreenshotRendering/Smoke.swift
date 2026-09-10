@@ -16,12 +16,12 @@ struct ScreenshotRenderingSmoke {
         status.update(snapshot: .empty, visibleModules: [])
         precondition(status.requiredWidth == 26, "empty status keeps fallback")
         status.quotaColumns = [QuotaReading.statusCells(provider: "Codex", reading: nil)]
-        precondition(status.requiredWidth == 90, "one provider occupies one column")
+        precondition(status.requiredWidth == 96, "one provider occupies one column")
         status.quotaColumns.append(QuotaReading.statusCells(provider: "Cursor", reading: nil))
-        precondition(status.requiredWidth == 180, "two providers reduced from 256 to 180 points")
-        for label in ["CODEX 5H", "CODEX 7D", "CURSOR M", "OTHER M"] {
+        precondition(status.requiredWidth == 192, "two providers reduced from 256 to 192 points")
+        for label in ["CODEX 5H", "CODEX 30D", "CURSOR M", "OTHER M"] {
             let size = (label + " 100%*" as NSString).size(withAttributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .semibold)])
-            precondition(size.width <= 86 && size.height <= 11, "longest quota row fits without clipping")
+            precondition(size.width <= 92 && size.height <= 11, "longest quota row fits without clipping")
         }
         if CommandLine.arguments.count > 1 {
             let preview = status.bitmapImageRepForCachingDisplay(in: status.bounds)!

@@ -1,6 +1,7 @@
 import AppKit
 
 final class StatusBarMetricsView: NSView {
+    private static let quotaColumnWidth: CGFloat = 96
     private static let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .bold)
     private static let labelFont = NSFont.monospacedSystemFont(ofSize: 8, weight: .medium)
     private static let networkValueFont = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .semibold)
@@ -40,7 +41,7 @@ final class StatusBarMetricsView: NSView {
         guard !visibleModules.isEmpty || !quotaColumns.isEmpty else { return 26 }
         return MetricModule.allCases
             .filter(visibleModules.contains)
-            .reduce(CGFloat(quotaColumns.count * 90)) { $0 + width(for: $1) }
+            .reduce(CGFloat(quotaColumns.count) * Self.quotaColumnWidth) { $0 + width(for: $1) }
     }
 
     override var intrinsicContentSize: NSSize {
@@ -76,10 +77,10 @@ final class StatusBarMetricsView: NSView {
             for (index, cell) in column.prefix(2).enumerated() {
                 let midY = floor(bounds.midY)
                 let rect = NSRect(x: x + 2, y: index == 0 ? midY - 0.5 : 0.5,
-                                  width: 86, height: index == 0 ? bounds.height - midY + 0.5 : midY)
+                                  width: Self.quotaColumnWidth - 4, height: index == 0 ? bounds.height - midY + 0.5 : midY)
                 drawCentered("\(cell.0) \(cell.1)", in: rect, font: Self.networkValueFont)
             }
-            x += 90
+            x += Self.quotaColumnWidth
         }
     }
 

@@ -163,9 +163,15 @@ let cells = QuotaReading.statusCells(provider: "Codex", reading: twoWindows)
 check(cells.map { $0.0 } == ["CODEX 5H", "CODEX 7D"], "codex labels distinguish both windows")
 check(cells.map { $0.1 } == ["95%", "80%"], "codex windows matched by duration not position")
 let partialCells = QuotaReading.statusCells(provider: "Codex", reading: codexQuota)
-check(partialCells.map { $0.1 } == ["75%", "--%"], "missing weekly window is unknown")
+check(partialCells.map { $0.1 } == ["75%"], "only returned codex window is shown")
 check(QuotaReading.statusCells(provider: "Codex", reading: twoWindows, failed: true).map { $0.1 } == ["95%*", "80%*"], "failed codex refresh marks both cached windows")
-check(QuotaReading.statusCells(provider: "Codex", reading: staleQuota).map { $0.1 } == ["--%", "--%"], "stale split windows hidden")
+check(QuotaReading.statusCells(provider: "Codex", reading: staleQuota).isEmpty, "stale codex windows hidden")
+let freeCodex = QuotaParsing.codex(["rateLimits": [
+    "primary": ["usedPercent": 11, "windowDurationMins": 43200]
+]])!
+check(freeCodex.windows.first?.title == "30 天", "free codex period is human-readable")
+check(QuotaReading.statusCells(provider: "Codex", reading: freeCodex).map { $0.0 } == ["CODEX 30D"], "free codex status uses actual 30-day period")
+check(QuotaReading.statusCells(provider: "Codex", reading: freeCodex).map { $0.1 } == ["89%"], "free codex remaining is preserved")
 check(QuotaReading.statusCells(provider: "Cursor", reading: nil).map { $0.1 } == ["--%", "--%"], "cursor missing pools unknown")
 let cursorSplit = QuotaParsing.cursor(["planUsage": ["autoPercentUsed": 90.8291666667, "apiPercentUsed": 100, "totalPercentUsed": 50]])!
 check(cursorSplit.windows.map(\.title) == ["Cursor Models", "Other Models"], "cursor full pool titles")

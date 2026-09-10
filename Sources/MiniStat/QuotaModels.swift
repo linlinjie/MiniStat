@@ -55,11 +55,34 @@ struct QuotaReading {
             return "\(Int(window.remaining.rounded()))%" + (failed ? "*" : "")
         }
         if provider == "Codex" {
-            return [("CODEX 5H", text(windows.first { $0.durationMinutes == 300 })),
-                    ("CODEX 7D", text(windows.first { $0.durationMinutes == 10080 }))]
+            // Codex plans do not always expose the familiar 5-hour and 7-day
+            // windows. Free plans may expose one 30-day window, for example.
+            // Show the actual active windows rather than inventing a missing
+            // 7-day row from a paid-plan layout.
+            let ordered = windows.sorted { lhs, rhs in
+                let order: [Int: Int] = [300: 0, 10080: 1]
+                let lhsOrder = order[lhs.durationMinutes ?? -1] ?? 2
+                let rhsOrder = order[rhs.durationMinutes ?? -1] ?? 2
+                return lhsOrder == rhsOrder
+                    ? (lhs.durationMinutes ?? 0) < (rhs.durationMinutes ?? 0)
+                    : lhsOrder < rhsOrder
+            }
+            return ordered.prefix(2).map { (codexStatusLabel($0), text($0)) }
         }
         return CursorQuotaPool.allCases.map { pool in
             (pool.label, text(windows.first { $0.cursorPool == pool }))
+        }
+    }
+
+    private static func codexStatusLabel(_ window: QuotaWindow) -> String {
+        switch window.durationMinutes {
+        case 300: return "CODEX 5H"
+        case 10080: return "CODEX 7D"
+        case let minutes? where minutes > 0:
+            if minutes.isMultiple(of: 1440) { return "CODEX \(minutes / 1440)D" }
+            if minutes.isMultiple(of: 60) { return "CODEX \(minutes / 60)H" }
+            return "CODEX \(minutes)M"
+        default: return "CODEX"
         }
     }
 }
@@ -79,7 +102,13 @@ enum QuotaParsing {
         let windows = ["primary", "secondary"].compactMap { key -> QuotaWindow? in
             guard let item = limits[key] as? [String: Any], let left = remaining(item["usedPercent"]) else { return nil }
             let minutes = number(item["windowDurationMins"]) ?? 0
-            let label = minutes == 10080 ? "周额度" : minutes == 300 ? "5 小时" : "\(Int(minutes)) 分钟"
+            let label: String
+            if minutes == 10080 { label = "周额度" }
+            else if minutes == 300 { label = "5 小时" }
+            else if minutes > 0, Int(minutes).isMultiple(of: 1440) { label = "\(Int(minutes) / 1440) 天" }
+            else if minutes > 0, Int(minutes).isMultiple(of: 60) { label = "\(Int(minutes) / 60) 小时" }
+            else if minutes > 0 { label = "\(Int(minutes)) 分钟" }
+            else { label = "当前周期" }
             return QuotaWindow(title: label, remaining: left, reset: number(item["resetsAt"]).map(Date.init(timeIntervalSince1970:)), durationMinutes: Int(minutes))
         }
         return windows.isEmpty ? nil : QuotaReading(windows: windows, updated: Date())
