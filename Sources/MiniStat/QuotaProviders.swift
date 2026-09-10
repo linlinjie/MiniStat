@@ -124,7 +124,7 @@ enum CodexQuotaProvider {
             if process.isRunning { process.terminate() }
         }
         try process.run()
-        send(["id": 1, "method": "initialize", "params": ["clientInfo": ["name": "ministat", "version": "0.4.2"], "capabilities": [:]]])
+        send(["id": 1, "method": "initialize", "params": ["clientInfo": ["name": "ministat", "version": "0.4.3"], "capabilities": [:]]])
         let success = done.wait(timeout: .now() + 18) == .success
         lock.lock(); finished = true; let value = reading; lock.unlock()
         guard success, let value else { throw QuotaFailure.message("Codex 查询失败或超时，请确认已登录 ChatGPT 账号") }

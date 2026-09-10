@@ -32,7 +32,7 @@ cd MiniStat
 
 构建脚本会从 `Packaging/AppIcon.png` 自动生成多尺寸 ICNS 资源；系统 `iconutil` 不可用时也无需额外依赖。
 
-构建结果位于上级目录的 `outputs/MiniStat.app`，应用压缩包为 `outputs/MiniStat-0.4.2-arm64.zip`，源码包为 `outputs/MiniStat-0.4.2-source.zip`。
+构建结果位于上级目录的 `outputs/MiniStat.app`，应用压缩包为 `outputs/MiniStat-0.4.3-arm64.zip`，源码包为 `outputs/MiniStat-0.4.3-source.zip`。
 
 首次使用可直接打开构建出的应用；长期使用建议将其拖到 `/Applications`。点击菜单栏指标可调整显示模块、刷新频率和开机启动。
 
@@ -51,6 +51,8 @@ cd MiniStat
 ## AI 额度（0.3.0）
 
 0.4.2 起每个软件只占一列（90pt），上下两行显示：Codex 为 `CODEX 5H` / `CODEX 7D`，Cursor 为 `CURSOR M` / `OTHER M`，每行标签后跟剩余百分比。两者同时显示由 256pt 缩至 180pt，约减少 30%，详情和额度采集逻辑不变。
+
+0.4.3 改为优先执行实际截图，不再把 macOS 的屏幕权限预检缓存结果作为拦截条件；因此已授权、刚重签名或刚重启后不会反复出现应用内“请求系统授权”提示。真正捕获失败时才给出明确的系统设置指引。
 
 菜单“额度显示（剩余）”提供关闭、仅 Codex、仅 Cursor、两者同时显示，选择自动保存。“额度刷新频率”独立设置，默认每 5 分钟查询一次，可从“额度详情与连接”手动刷新、查看重置时间。上一次查询未完成时跳过该软件的新查询，关闭额度显示时停止额度定时器。
 
