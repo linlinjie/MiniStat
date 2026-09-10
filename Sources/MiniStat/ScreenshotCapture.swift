@@ -118,15 +118,11 @@ final class ScreenshotCapture {
 
     func begin() {
         guard !busy, overlays.isEmpty else { return }
-        guard CGPreflightScreenCaptureAccess() else {
-            let alert = NSAlert()
-            alert.messageText = "允许 MiniStat 截取屏幕"
-            alert.informativeText = "仅在你点击截图时读取屏幕。图片和 OCR 在本机处理，不自动保存或上传。首次使用需在系统设置中允许屏幕录制；授权后可能需要重启 MiniStat。"
-            alert.addButton(withTitle: "请求系统授权"); alert.addButton(withTitle: "取消")
-            NSApplication.shared.activate(ignoringOtherApps: true)
-            if alert.runModal() == .alertFirstButtonReturn { _ = CGRequestScreenCaptureAccess() }
-            return
-        }
+        // Do not use CGPreflightScreenCaptureAccess as a hard gate here. Its
+        // cached result can remain false after an ad-hoc rebuild, app move, or
+        // a just-granted permission even though ScreenCaptureKit can capture.
+        // Attempt the real operation first and only show a permission message
+        // when the capture itself fails.
         editor?.close(); editor = nil
         busy = true
         Task { [weak self] in
@@ -151,7 +147,11 @@ final class ScreenshotCapture {
                 self.showSelections(captures)
             } catch {
                 self.busy = false
-                self.showMessage("截图失败", "请检查系统设置中的屏幕录制权限。若刚授权，请退出并重新打开 MiniStat 后重试。")
+                let access = CGPreflightScreenCaptureAccess()
+                let message = access
+                    ? "截图服务暂时不可用，请稍后重试。"
+                    : "请在系统设置 → 隐私与安全性 → 屏幕录制中确认 MiniStat 已开启。修改后重启一次 MiniStat 即可。"
+                self.showMessage("截图失败", message)
             }
         }
     }
