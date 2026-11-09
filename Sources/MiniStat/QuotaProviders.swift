@@ -79,7 +79,7 @@ final class CursorQuotaProvider: NSObject, URLSessionTaskDelegate {
 
 enum CodexQuotaProvider {
     static func read() throws -> QuotaReading {
-        let candidates = ["/Applications/ChatGPT.app/Contents/Resources/codex", "/Applications/Codex.app/Contents/Resources/codex", "/opt/homebrew/bin/codex", "/usr/local/bin/codex"]
+        let candidates = ["/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex", "/Applications/Codex.app/Contents/Resources/codex-cli/bin/codex", "/Applications/ChatGPT.app/Contents/Resources/codex", "/Applications/Codex.app/Contents/Resources/codex", "/opt/homebrew/bin/codex", "/usr/local/bin/codex"]
         guard let path = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { throw QuotaFailure.message("未找到 Codex，请安装并登录") }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: path)
@@ -124,7 +124,7 @@ enum CodexQuotaProvider {
             if process.isRunning { process.terminate() }
         }
         try process.run()
-        send(["id": 1, "method": "initialize", "params": ["clientInfo": ["name": "ministat", "version": "0.4.4"], "capabilities": [:]]])
+        send(["id": 1, "method": "initialize", "params": ["clientInfo": ["name": "ministat", "version": "0.4.5"], "capabilities": [:]]])
         let success = done.wait(timeout: .now() + 18) == .success
         lock.lock(); finished = true; let value = reading; lock.unlock()
         guard success, let value else { throw QuotaFailure.message("Codex 查询失败或超时，请确认已登录 ChatGPT 账号") }

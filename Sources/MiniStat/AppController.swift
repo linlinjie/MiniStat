@@ -415,7 +415,14 @@ final class AppController: NSObject, NSMenuDelegate {
                 self.quotaLoading.remove("Cursor")
                 switch result {
                 case .success(let value): self.quotaReadings["Cursor"] = value; self.quotaErrors["Cursor"] = nil
-                case .failure(let error): self.quotaErrors["Cursor"] = error.localizedDescription
+                case .failure(let error):
+                    self.quotaErrors["Cursor"] = error.localizedDescription
+                    let alert = NSAlert()
+                    alert.messageText = "Cursor 额度连接失败"
+                    alert.informativeText = error.localizedDescription
+                    alert.addButton(withTitle: "好")
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                    alert.runModal()
                 }
                 self.updateStatusView(); self.rebuildQuotaDetails()
             }

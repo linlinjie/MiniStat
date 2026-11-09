@@ -32,7 +32,7 @@ cd MiniStat
 
 构建脚本会从 `Packaging/AppIcon.png` 自动生成多尺寸 ICNS 资源；系统 `iconutil` 不可用时也无需额外依赖。
 
-构建结果位于上级目录的 `outputs/MiniStat.app`，应用压缩包为 `outputs/MiniStat-0.4.4-arm64.zip`，源码包为 `outputs/MiniStat-0.4.4-source.zip`。
+构建结果位于上级目录的 `outputs/MiniStat.app`，应用压缩包为 `outputs/MiniStat-0.4.5-arm64.zip`，源码包为 `outputs/MiniStat-0.4.5-source.zip`。
 
 首次使用可直接打开构建出的应用；长期使用建议将其拖到 `/Applications`。点击菜单栏指标可调整显示模块、刷新频率和开机启动。
 
@@ -55,6 +55,8 @@ cd MiniStat
 0.4.3 改为优先执行实际截图，不再把 macOS 的屏幕权限预检缓存结果作为拦截条件；因此已授权、刚重签名或刚重启后不会反复出现应用内“请求系统授权”提示。真正捕获失败时才给出明确的系统设置指引。
 
 0.4.4 兼容 Codex 免费套餐等非标准额度周期：菜单栏按接口实际窗口展示，例如 43,200 分钟显示为 `CODEX 30D`，详情显示为“30 天”；不再错误保留 `CODEX 7D --%`。
+
+0.4.5 适配新版 ChatGPT 内置 Codex CLI 路径，并在手动重试 Cursor 连接失败时显示具体错误。
 
 菜单“额度显示（剩余）”提供关闭、仅 Codex、仅 Cursor、两者同时显示，选择自动保存。“额度刷新频率”独立设置，默认每 5 分钟查询一次，可从“额度详情与连接”手动刷新、查看重置时间。上一次查询未完成时跳过该软件的新查询，关闭额度显示时停止额度定时器。
 
